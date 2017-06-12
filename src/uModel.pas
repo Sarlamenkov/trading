@@ -101,6 +101,9 @@ type
     FPortfolio: array of Integer;
     FInitialPortfolio: array of Integer;
     FEndBalanceWithoutAlgorithm: Integer;
+    FRealStartPeriod, FRealEndPeriod: TDateTime;
+    FPercent: Double;
+    FPercentWithoutAlgorithm: Double;
     procedure SetRebalancePeriod(const Value: THistoryType);
     procedure SetStartBalance(const Value: Integer);
     procedure Rebalance;
@@ -112,26 +115,41 @@ type
     property EndBalance: Integer read FEndBalance;
     property EndBalanceWithoutAlgorithm: Integer read FEndBalanceWithoutAlgorithm;
     property RebalancePeriod: THistoryType read FRebalancePeriod write SetRebalancePeriod;
+    property RealStart: TDateTime read FRealStartPeriod;
+    property RealEnd: TDateTime read FRealEndPeriod;
+    property Percent: Double read FPercent;
+    property PercentWithoutAlgorithm: Double read FPercentWithoutAlgorithm;
   end;
 
 implementation
 
 uses
-  SysUtils, StrUtils, DateUtils;
+  SysUtils, StrUtils, DateUtils, Math;
 
 { TMarkovic }
 
 procedure TMarkovic.Calc(const AStartPeriod, AEndPeriod: TDateTime; const AInstrumList: TList);
 var
   i: Integer;
+  vHist: THistory;
+  vTestPeriodInYears: Double;
 begin
   FCurTime := AStartPeriod;
   FCash := FStartBalance;
   FInstrumList := AInstrumList;
+  FRealStartPeriod := AStartPeriod;
+  FRealEndPeriod := AEndPeriod;
   SetLength(FPortfolio, FInstrumList.Count);
   SetLength(FInitialPortfolio, FInstrumList.Count);
   for i := 0 to FInstrumList.Count - 1 do
+  begin
     FPortfolio[i] := 0;
+    vHist := TInstrument(FInstrumList[i]).History[htDay];
+    if FRealStartPeriod < vHist.Items[0].VDate then
+      FRealStartPeriod := vHist.Items[0].VDate;
+    if FRealEndPeriod > vHist.Items[vHist.Count - 1].VDate then
+      FRealEndPeriod := vHist.Items[vHist.Count - 1].VDate;
+  end;
 
   Rebalance;
 
@@ -145,6 +163,10 @@ begin
   end;
 
   FEndBalance := Trunc(PortfolioValue(AEndPeriod) + FCash);
+
+  vTestPeriodInYears := (FRealEndPeriod - FRealStartPeriod) / 365;
+  FPercent := (Power(FEndBalance/FStartBalance, 1/vTestPeriodInYears) - 1) * 100;
+  FPercentWithoutAlgorithm := (Power(FEndBalanceWithoutAlgorithm/FStartBalance, 1/vTestPeriodInYears) - 1) * 100;
 end;
 
 function TMarkovic.PortfolioValue(const ADate: TDateTime): Double;
