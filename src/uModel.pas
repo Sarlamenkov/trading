@@ -8,28 +8,40 @@ uses
 type
   THistoryData = class
   private
-    FValue: Double;
     FVDate: TDateTime;
+    FLow: Double;
+    FOpen: Double;
+    FHigh: Double;
+    FClose: Double;
   public
-    constructor Create(const ADate: TDateTime; const AValue: Double);
+    constructor Create(const ADate: TDateTime; const AOpen, AHigh, ALow, AClose: Double);
     destructor Destroy; override;
 
+    function DateAsText: string;
+
     property VDate: TDateTime read FVDate;
-    property Value: Double read FValue;
+    property Open: Double read FOpen;
+    property High: Double read FHigh;
+    property Low: Double read FLow;
+    property Close: Double read FClose;
   end;
 
   TInstrument = class;
-  THistoryType = (htHour, htDay, htMonth);
+  THistoryType = (htHour, htDay, htWeek, htMonth, htYear);
 
   THistory = class
   private
     FType: THistoryType;
     FOwner: TInstrument;
     FItems: TList;
+    FEmpty: THistoryData;
     function GetData(const AIndex: Integer): THistoryData;
     function GetCount: Integer;
+    function GetHTText: string;
   public
     class function HistoryTypeByText(const AText: string): THistoryType;
+    class function ToText(const AType: THistoryType): string;
+    class function Period(const AType: THistoryType): TDateTime;
 
     constructor Create(const AOwner: TInstrument; const AHistotyType: THistoryType);
     destructor Destroy; override;
@@ -37,9 +49,14 @@ type
     procedure LoadFromFile(const AFileName: string);
     procedure LoadFromStrings(const AStrings: TStrings);
 
+    function GetRate(const ADate: TDateTime): THistoryData;
+    function Min(const ABegin, AEnd: TDateTime): THistoryData;
+    function Max(const ABegin, AEnd: TDateTime): THistoryData;
+
     property Items[const AIndex: Integer]: THistoryData read GetData; default;
     property Count: Integer read GetCount;
     property HistoryType: THistoryType read FType;
+    property HistoryTypeText: string read GetHTText;
   end;
 
   TInstrument = class
@@ -51,6 +68,8 @@ type
   public
     constructor Create(const AName: string);
     destructor Destroy; override;
+
+    function GetRate(const ADate: TDateTime; const AType: THistoryType): THistoryData;
 
     property Name: string read FName;
     property History[const AType: THistoryType]: THistory read GetHistory;
@@ -74,16 +93,25 @@ type
   TMarkovic = class
   private
     FStartBalance: Integer;
-    FRebalancePeriod: Integer;
+    FRebalancePeriod: THistoryType;
     FEndBalance: Integer;
-    procedure SetRebalancePeriod(const Value: Integer);
+    FCurTime: TDateTime;
+    FCash: Double;
+    FInstrumList: TList;
+    FPortfolio: array of Integer;
+    FInitialPortfolio: array of Integer;
+    FEndBalanceWithoutAlgorithm: Integer;
+    procedure SetRebalancePeriod(const Value: THistoryType);
     procedure SetStartBalance(const Value: Integer);
+    procedure Rebalance;
+    function PortfolioValue(const ADate: TDateTime): Double;  // стоимость портфеля на дату
   public
-    procedure Calc;
+    procedure Calc(const AStartPeriod, AEndPeriod: TDateTime; const AInstrumList: TList);
 
-    property StartBalance: Integer read FStartBalance write SetStartBalance; // some currency
+    property StartBalance: Integer read FStartBalance write SetStartBalance; // RUB
     property EndBalance: Integer read FEndBalance;
-    property RebalancePeriod: Integer read FRebalancePeriod write SetRebalancePeriod; // in hours
+    property EndBalanceWithoutAlgorithm: Integer read FEndBalanceWithoutAlgorithm;
+    property RebalancePeriod: THistoryType read FRebalancePeriod write SetRebalancePeriod;
   end;
 
 implementation
@@ -93,12 +121,62 @@ uses
 
 { TMarkovic }
 
-procedure TMarkovic.Calc;
+procedure TMarkovic.Calc(const AStartPeriod, AEndPeriod: TDateTime; const AInstrumList: TList);
+var
+  i: Integer;
 begin
+  FCurTime := AStartPeriod;
+  FCash := FStartBalance;
+  FInstrumList := AInstrumList;
+  SetLength(FPortfolio, FInstrumList.Count);
+  SetLength(FInitialPortfolio, FInstrumList.Count);
+  for i := 0 to FInstrumList.Count - 1 do
+    FPortfolio[i] := 0;
 
+  Rebalance;
+
+  FEndBalanceWithoutAlgorithm := Trunc(PortfolioValue(AEndPeriod) + FCash);
+
+  FCurTime := AStartPeriod;
+  while FCurTime < AEndPeriod do
+  begin
+    FCurTime := FCurTime + THistory.Period(FRebalancePeriod);
+    Rebalance;
+  end;
+
+  FEndBalance := Trunc(PortfolioValue(AEndPeriod) + FCash);
 end;
 
-procedure TMarkovic.SetRebalancePeriod(const Value: Integer);
+function TMarkovic.PortfolioValue(const ADate: TDateTime): Double;
+var
+  i: Integer;
+begin
+  Result := 0;
+  for i := 0 to FInstrumList.Count - 1 do
+    Result := Result + FPortfolio[i] * TInstrument(FInstrumList[i]).GetRate(ADate, htDay).Close;
+end;
+
+procedure TMarkovic.Rebalance;
+var
+  vBalance, vBalancePart, vRate: Double;
+  i, vNeedCount, vBuyCount: Integer;
+begin
+  vBalance := PortfolioValue(FCurTime) + FCash;
+  vBalancePart := vBalance / FInstrumList.Count; // делим портфель на равные части
+
+  for i := 0 to FInstrumList.Count - 1 do
+  begin
+    vRate := TInstrument(FInstrumList[i]).GetRate(FCurTime, htDay).Close;
+    Assert(vRate > 0, 'Для инструмента: ' + TInstrument(FInstrumList[i]).Name +
+      ' не найден курс на ' + FormatDateTime('dd.mm.yyyy', FCurTime));
+    vNeedCount := Trunc(vBalancePart / vRate); // сколько нужно иметь этого инструмента
+    vBuyCount := vNeedCount - FPortfolio[i]; // сколько нужно докупить (получится минус - значит сколько продать)
+    FCash := FCash - vBuyCount * vRate;
+    FPortfolio[i] := FPortfolio[i] + vBuyCount; // докупаем
+  end;
+end;
+
+procedure TMarkovic.SetRebalancePeriod(const Value: THistoryType);
 begin
   FRebalancePeriod := Value;
 end;
@@ -195,10 +273,18 @@ end;
 
 { THistoryData }
 
-constructor THistoryData.Create(const ADate: TDateTime; const AValue: Double);
+constructor THistoryData.Create(const ADate: TDateTime; const AOpen, AHigh, ALow, AClose: Double);
 begin
-  FValue := AValue;
+  FOpen := AOpen;
+  FHigh := AHigh;
+  FLow := ALow;
+  FClose := AClose;
   FVDate := ADate;
+end;
+
+function THistoryData.DateAsText: string;
+begin
+  Result := FormatDateTime('dd.mm.yyyy', VDate);
 end;
 
 destructor THistoryData.Destroy;
@@ -250,6 +336,12 @@ begin
   end;
 end;
 
+function TInstrument.GetRate(const ADate: TDateTime;
+  const AType: THistoryType): THistoryData;
+begin
+  Result := History[AType].GetRate(ADate);
+end;
+
 { THistory }
 
 constructor THistory.Create(const AOwner: TInstrument; const AHistotyType: THistoryType);
@@ -257,10 +349,12 @@ begin
   FItems := TList.Create;
   FOwner := AOwner;
   FType := AHistotyType;
+  FEmpty := THistoryData.Create(0, 0, 0, 0, 0);
 end;
 
 destructor THistory.Destroy;
 begin
+  FreeAndNil(FEmpty);
   FreeAndNil(FItems);
   inherited;
 end;
@@ -273,6 +367,48 @@ end;
 function THistory.GetData(const AIndex: Integer): THistoryData;
 begin
   Result := THistoryData(FItems[AIndex]);
+end;
+
+function THistory.GetHTText: string;
+begin
+  Result := ToText(FType);
+end;
+
+function THistory.GetRate(const ADate: TDateTime): THistoryData;
+var
+  L, H: Integer;
+  mid, cmp: Integer;
+  vFound: Boolean;
+begin
+  Result := FEmpty;
+  vFound := False;
+  L := 0;
+  H := Count - 1;
+  while L <= H do
+  begin
+    mid := L + (H - L) shr 1;
+//    cmp := Comparer.Compare(Values[mid], Item);
+    cmp := CompareDate(Items[mid].VDate, ADate);
+    if cmp < 0 then
+      L := mid + 1
+    else
+    begin
+      H := mid - 1;
+      if cmp = 0 then
+        vFound := True;
+    end;
+  end;
+  if vFound then
+    Result := Items[L]
+  else if FItems.Count > 0 then
+  begin
+    if ADate < Items[0].VDate then
+      Result := Items[0]
+    else if ADate > Items[Count - 1].VDate then
+      Result := Items[Count - 1]
+    else if (L > -1) and (L < Count) then
+      Result := Items[L];
+  end;
 end;
 
 class function THistory.HistoryTypeByText(const AText: string): THistoryType;
@@ -293,7 +429,7 @@ var
   i: Integer;
   vHD: THistoryData;
   vDate: TDate;
-  vRate: Double;
+  vOpen, vHigh, vLow, vClose: Double;
   vPrevDecSep: Char;
   function mStrToDate(const AStr: string): TDate;
   var
@@ -313,15 +449,61 @@ begin
     for i := 0 to AStrings.Count - 1 do
     begin
       vSplit.DelimitedText := AStrings[i];
+      if vSplit.Count = 0 then Continue;
       vDate := mStrToDate(vSplit[2]);
-      vRate := StrToFloat(vSplit[4]);
-      vHD := THistoryData.Create(vDate, vRate);
+      vOpen := StrToFloat(vSplit[4]);
+      vHigh := StrToFloat(vSplit[5]);
+      vLow := StrToFloat(vSplit[6]);
+      vClose := StrToFloat(vSplit[7]);
+      vHD := THistoryData.Create(vDate, vOpen, vHigh, vLow, vClose);
       FItems.Add(vHD);
     end;
   finally
     FormatSettings.DecimalSeparator := vPrevDecSep;
     vSplit.Free;
   end;
+end;
+
+function THistory.Max(const ABegin, AEnd: TDateTime): THistoryData;
+var
+  i: Integer;
+begin
+  Result := FEmpty;
+  for i := 0 to FItems.Count - 1 do
+    if (Items[i].VDate >= ABegin) and (Items[i].VDate <= AEnd) and (Items[i].Close > Result.Close) then
+      Result := Items[i];
+end;
+
+function THistory.Min(const ABegin, AEnd: TDateTime): THistoryData;
+var
+  i: Integer;
+begin
+  FEmpty.FClose := MaxInt;
+  Result := FEmpty;
+  for i := 0 to FItems.Count - 1 do
+    if (Items[i].VDate >= ABegin) and (Items[i].VDate <= AEnd) and (Items[i].Close < Result.Close) then
+      Result := Items[i];
+  FEmpty.FClose := 0;
+end;
+
+class function THistory.Period(const AType: THistoryType): TDateTime;
+begin
+  Result := 0;
+  case AType of
+    htHour: Result := 1/24;
+    htDay: Result := 1;
+    htWeek: Result := 7;
+    htMonth: Result := 30;
+    htYear: Result := 365;
+  end;
+end;
+
+const
+  TextHistoryType: array[THistoryType] of string = ('Hour', 'Day', 'Week', 'Month', 'Year');
+
+class function THistory.ToText(const AType: THistoryType): string;
+begin
+  Result := TextHistoryType[AType];
 end;
 
 end.
