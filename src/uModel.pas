@@ -104,6 +104,7 @@ type
     FRealStartPeriod, FRealEndPeriod: TDateTime;
     FPercent: Double;
     FPercentWithoutAlgorithm: Double;
+    FRebalanceCount: Integer;
     procedure SetRebalancePeriod(const Value: THistoryType);
     procedure SetStartBalance(const Value: Integer);
     procedure Rebalance;
@@ -119,6 +120,7 @@ type
     property RealEnd: TDateTime read FRealEndPeriod;
     property Percent: Double read FPercent;
     property PercentWithoutAlgorithm: Double read FPercentWithoutAlgorithm;
+    property RebalanceCount: Integer read FRebalanceCount;
   end;
 
 implementation
@@ -134,7 +136,7 @@ var
   vHist: THistory;
   vTestPeriodInYears: Double;
 begin
-  FCurTime := AStartPeriod;
+  FRebalanceCount := 0;
   FCash := FStartBalance;
   FInstrumList := AInstrumList;
   FRealStartPeriod := AStartPeriod;
@@ -151,18 +153,18 @@ begin
       FRealEndPeriod := vHist.Items[vHist.Count - 1].VDate;
   end;
 
+  FCurTime := FRealStartPeriod;
   Rebalance;
 
   FEndBalanceWithoutAlgorithm := Trunc(PortfolioValue(AEndPeriod) + FCash);
 
-  FCurTime := AStartPeriod;
-  while FCurTime < AEndPeriod do
+  while FCurTime < FRealEndPeriod do
   begin
     FCurTime := FCurTime + THistory.Period(FRebalancePeriod);
     Rebalance;
   end;
 
-  FEndBalance := Trunc(PortfolioValue(AEndPeriod) + FCash);
+  FEndBalance := Trunc(PortfolioValue(FRealEndPeriod) + FCash);
 
   vTestPeriodInYears := (FRealEndPeriod - FRealStartPeriod) / 365;
   FPercent := (Power(FEndBalance/FStartBalance, 1/vTestPeriodInYears) - 1) * 100;
@@ -196,6 +198,7 @@ begin
     FCash := FCash - vBuyCount * vRate;
     FPortfolio[i] := FPortfolio[i] + vBuyCount; // докупаем
   end;
+  Inc(FRebalanceCount);
 end;
 
 procedure TMarkovic.SetRebalancePeriod(const Value: THistoryType);
@@ -428,8 +431,8 @@ begin
       Result := Items[0]
     else if ADate > Items[Count - 1].VDate then
       Result := Items[Count - 1]
-    else if (L > -1) and (L < Count) then
-      Result := Items[L];
+    else if (L > 0) and (L < Count) then
+      Result := Items[L-1];
   end;
 end;
 

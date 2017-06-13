@@ -3,10 +3,10 @@ unit MainForm;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs,
+  Windows, Messages, SysUtils, Variants, Classes, Graphics,
+  Controls, Forms, StdCtrls, ComCtrls, Spin,
 
-  uModel, Vcl.StdCtrls, Vcl.ComCtrls, Vcl.Samples.Spin;
+  uModel, Vcl.Dialogs;
 
 type
   TMainFm = class(TForm)
@@ -27,15 +27,23 @@ type
     Label3: TLabel;
     SpinEdit1: TSpinEdit;
     btnSearch: TButton;
+    ProgressBar1: TProgressBar;
+    btnStop: TButton;
+    btnSave: TButton;
+    FileSaveDialog1: TFileSaveDialog;
     procedure FormShow(Sender: TObject);
     procedure btnStartClick(Sender: TObject);
     procedure btnSearchClick(Sender: TObject);
     procedure lvBestResultsCompare(Sender: TObject; Item1, Item2: TListItem;
       Data: Integer; var Compare: Integer);
+    procedure btnStopClick(Sender: TObject);
+    procedure btnSaveClick(Sender: TObject);
   private
     FInstrums: TInstruments;
     FMarkovic: TMarkovic;
+    FInProcess: Boolean;
     procedure FillInstrums;
+    procedure UpdateUIState;
   public
     { Public declarations }
   end;
@@ -45,7 +53,26 @@ var
 
 implementation
 
+uses
+  StrUtils;
+
 {$R *.dfm}
+
+procedure TMainFm.btnSaveClick(Sender: TObject);
+var
+  vStrList: TStringList;
+  i: Integer;
+begin
+  if FileSaveDialog1.Execute then
+  begin
+    vStrList := TStringList.Create;
+    vStrList.Append('%'#9'Instrum'#9'Intv'#9'%w alg'#9'%w/o alg'#9'Rebal'#9'Start'#9'End'#9'Days');
+    for i := 0 to lvBestResults.Items.Count - 1 do
+      vStrList.Append(lvBestResults.Items[i].Caption);
+    vStrList.SaveToFile(FileSaveDialog1.FileName);
+    vStrList.Free;
+  end;
+end;
 
 procedure TMainFm.btnSearchClick(Sender: TObject);
 var
@@ -55,15 +82,21 @@ var
   vRebalance: THistoryType;
   vPrevCursor: TCursor;
 begin
+  if FInProcess then Exit;
+
+  FInProcess := True;
   lvBestResults.Clear;
   lvBestResults.Items.BeginUpdate;
   vInstrList := TList.Create;
   vPrevCursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
+  ProgressBar1.Position := 0;
+  UpdateUIState;
+  Application.ProcessMessages;
   try
-    for vRebalance := Low(THistoryType) to High(THistoryType) do
+    for i := 0 to FInstrums.Count - SpinEdit1.Value do
     begin
-      for i := 0 to FInstrums.Count - SpinEdit1.Value do
+      for vRebalance := htDay to High(THistoryType) do
       begin
         for j := i + 1 to FInstrums.Count - SpinEdit1.Value + 1 do
         begin
@@ -80,17 +113,29 @@ begin
           FMarkovic.RebalancePeriod := vRebalance;
           FMarkovic.Calc(dtpStart.Date, dtpEnd.Date, vInstrList);
 
-          lvBestResults.AddItem(FormatFloat('0.00', FMarkovic.Percent) +
-            '% ' + vInstrNames + ' ' + THistory.ToText(vRebalance) +
-            ' (' + DateToStr(FMarkovic.RealStart) + ' - ' + DateToStr(FMarkovic.RealEnd) + ')',
-            TObject(Trunc(FMarkovic.Percent * 1000000)) );
+          lvBestResults.AddItem(
+            FormatFloat('0.00', FMarkovic.Percent - FMarkovic.PercentWithoutAlgorithm) + #9 +
+            vInstrNames + #9 + THistory.ToText(vRebalance) + #9 +
+            FormatFloat('0.00', FMarkovic.Percent) + #9 +
+            FormatFloat('0.00', FMarkovic.PercentWithoutAlgorithm) + #9 +
+            IntToStr(FMarkovic.RebalanceCount) + #9 +
+            DateToStr(FMarkovic.RealStart) + #9 + DateToStr(FMarkovic.RealEnd) + #9 +
+            IntToStr(Trunc(FMarkovic.RealEnd - FMarkovic.RealStart)),
+            TObject(Trunc((FMarkovic.Percent - FMarkovic.PercentWithoutAlgorithm) * 100000)) );
         end;
       end;
+      ProgressBar1.Position := Trunc((i + 1) / FInstrums.Count * 100);
+      if FInProcess then
+        Application.ProcessMessages
+      else
+        Exit;
     end;
   finally
     vInstrList.Free;
     lvBestResults.Items.EndUpdate;
     Screen.Cursor := vPrevCursor;
+    FInProcess := False;
+    UpdateUIState;
   end;
   lvBestResults.AlphaSort;
 end;
@@ -124,6 +169,11 @@ begin
   end;
 
   vInstrList.Free;
+end;
+
+procedure TMainFm.btnStopClick(Sender: TObject);
+begin
+  FInProcess := False;
 end;
 
 procedure TMainFm.FillInstrums;
@@ -180,6 +230,14 @@ procedure TMainFm.lvBestResultsCompare(Sender: TObject; Item1, Item2: TListItem;
   Data: Integer; var Compare: Integer);
 begin
   Compare := Integer(Item2.Data) - Integer(Item1.Data);
+end;
+
+procedure TMainFm.UpdateUIState;
+begin
+  ProgressBar1.Visible := FInProcess;
+  btnSearch.Enabled := not FInProcess;
+  btnStop.Visible := FInProcess;
+  btnSave.Visible := not FInProcess;
 end;
 
 end.

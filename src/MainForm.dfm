@@ -35,7 +35,7 @@ object MainFm: TMainFm
   object lblResult: TLabel
     Left = 280
     Top = 176
-    Width = 22
+    Width = 5
     Height = 19
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -61,7 +61,7 @@ object MainFm: TMainFm
   object lblRealPeriod: TLabel
     Left = 280
     Top = 201
-    Width = 14
+    Width = 5
     Height = 19
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -73,7 +73,7 @@ object MainFm: TMainFm
   object lblInstrumNames: TLabel
     Left = 280
     Top = 151
-    Width = 33
+    Width = 5
     Height = 19
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
@@ -84,7 +84,7 @@ object MainFm: TMainFm
   end
   object Label3: TLabel
     Left = 280
-    Top = 266
+    Top = 248
     Width = 231
     Height = 16
     Caption = #1055#1086#1080#1089#1082' '#1083#1091#1095#1096#1080#1093' '#1089#1086#1095#1077#1090#1072#1085#1080#1081' '#1080#1085#1089#1090#1088#1091#1084#1077#1085#1090#1086#1074
@@ -115,6 +115,7 @@ object MainFm: TMainFm
     Anchors = [akLeft, akTop, akBottom]
     Indent = 19
     MultiSelect = True
+    ReadOnly = True
     RowSelect = True
     SortType = stText
     TabOrder = 2
@@ -154,6 +155,7 @@ object MainFm: TMainFm
       item
         Width = 500
       end>
+    ReadOnly = True
     RowSelect = True
     SortType = stData
     TabOrder = 6
@@ -162,7 +164,7 @@ object MainFm: TMainFm
   end
   object SpinEdit1: TSpinEdit
     Left = 561
-    Top = 256
+    Top = 245
     Width = 48
     Height = 26
     MaxValue = 10
@@ -172,11 +174,48 @@ object MainFm: TMainFm
   end
   object btnSearch: TButton
     Left = 632
-    Top = 257
+    Top = 245
     Width = 97
     Height = 25
     Caption = #1048#1089#1082#1072#1090#1100
     TabOrder = 8
     OnClick = btnSearchClick
+  end
+  object ProgressBar1: TProgressBar
+    Left = 281
+    Top = 274
+    Width = 619
+    Height = 10
+    Anchors = [akLeft, akTop, akRight]
+    Step = 1
+    TabOrder = 9
+    Visible = False
+  end
+  object btnStop: TButton
+    Left = 735
+    Top = 245
+    Width = 75
+    Height = 25
+    Caption = #1057#1090#1086#1087
+    TabOrder = 10
+    Visible = False
+    OnClick = btnStopClick
+  end
+  object btnSave: TButton
+    Left = 816
+    Top = 245
+    Width = 75
+    Height = 25
+    Caption = #1057#1086#1093#1088#1072#1085#1080#1090#1100
+    TabOrder = 11
+    Visible = False
+    OnClick = btnSaveClick
+  end
+  object FileSaveDialog1: TFileSaveDialog
+    FavoriteLinks = <>
+    FileTypes = <>
+    Options = []
+    Left = 800
+    Top = 184
   end
 end
