@@ -105,10 +105,13 @@ type
     FPercent: Double;
     FPercentWithoutAlgorithm: Double;
     FRebalanceCount: Integer;
+    FTotalComission: Double;
+    FPortfolioDifferenceAmount: Double;
     procedure SetRebalancePeriod(const Value: THistoryType);
     procedure SetStartBalance(const Value: Integer);
     procedure Rebalance;
-    function PortfolioValue(const ADate: TDateTime): Double;  // стоимость портфеля на дату
+    function PortfolioValue(const ADate: TDateTime): Double;
+    function PortfolioDifference(const ADate: TDateTime): Double;  // стоимость портфеля на дату
   public
     procedure Calc(const AStartPeriod, AEndPeriod: TDateTime; const AInstrumList: TList);
 
@@ -116,11 +119,13 @@ type
     property EndBalance: Integer read FEndBalance;
     property EndBalanceWithoutAlgorithm: Integer read FEndBalanceWithoutAlgorithm;
     property RebalancePeriod: THistoryType read FRebalancePeriod write SetRebalancePeriod;
+    property PortfolioDifferenceAmount: Double read FPortfolioDifferenceAmount write FPortfolioDifferenceAmount; // макс разница в портфеле в % для ребаланса
     property RealStart: TDateTime read FRealStartPeriod;
     property RealEnd: TDateTime read FRealEndPeriod;
     property Percent: Double read FPercent;
     property PercentWithoutAlgorithm: Double read FPercentWithoutAlgorithm;
     property RebalanceCount: Integer read FRebalanceCount;
+    property TotalComission: Double read FTotalComission;
   end;
 
 implementation
@@ -137,6 +142,7 @@ var
   vTestPeriodInYears: Double;
 begin
   FRebalanceCount := 0;
+  FTotalComission := 0;
   FCash := FStartBalance;
   FInstrumList := AInstrumList;
   FRealStartPeriod := AStartPeriod;
@@ -160,8 +166,17 @@ begin
 
   while FCurTime < FRealEndPeriod do
   begin
-    FCurTime := FCurTime + THistory.Period(FRebalancePeriod);
-    Rebalance;
+    if PortfolioDifferenceAmount > 0 then
+    begin
+      FCurTime := FCurTime + THistory.Period(htDay);
+      if PortfolioDifference(FCurTime) > FPortfolioDifferenceAmount then
+        Rebalance;
+    end
+    else
+    begin
+      FCurTime := FCurTime + THistory.Period(FRebalancePeriod);
+      Rebalance;
+    end;
   end;
 
   FEndBalance := Trunc(PortfolioValue(FRealEndPeriod) + FCash);
@@ -180,14 +195,29 @@ begin
     Result := Result + FPortfolio[i] * TInstrument(FInstrumList[i]).GetRate(ADate, htDay).Close;
 end;
 
+function TMarkovic.PortfolioDifference(const ADate: TDateTime): Double;
+var
+  i: Integer;
+  vRate2: Double;
+begin
+  Result := 0;
+  vRate2 := (FPortfolio[1] * TInstrument(FInstrumList[1]).GetRate(ADate, htDay).Close);
+  if vRate2 = 0 then Exit;
+
+  Result := (FPortfolio[0] * TInstrument(FInstrumList[0]).GetRate(ADate, htDay).Close)/
+    vRate2*100;
+  if Result > 100 then
+    Result := 1/Result;
+end;
+
 procedure TMarkovic.Rebalance;
 var
-  vBalance, vBalancePart, vRate: Double;
+  vBalance, vBalancePart, vRate, vBuySum, vComission: Double;
   i, vNeedCount, vBuyCount: Integer;
 begin
   vBalance := PortfolioValue(FCurTime) + FCash;
   vBalancePart := vBalance / FInstrumList.Count; // делим портфель на равные части
-
+  vComission := 0;
   for i := 0 to FInstrumList.Count - 1 do
   begin
     vRate := TInstrument(FInstrumList[i]).GetRate(FCurTime, htDay).Close;
@@ -195,9 +225,13 @@ begin
       ' не найден курс на ' + FormatDateTime('dd.mm.yyyy', FCurTime));
     vNeedCount := Trunc(vBalancePart / vRate); // сколько нужно иметь этого инструмента
     vBuyCount := vNeedCount - FPortfolio[i]; // сколько нужно докупить (получится минус - значит сколько продать)
-    FCash := FCash - vBuyCount * vRate;
+    vBuySum := vBuyCount * vRate;
+    vComission := vComission + Abs(vBuySum*0.006);
+    FCash := FCash - vBuySum;
     FPortfolio[i] := FPortfolio[i] + vBuyCount; // докупаем
   end;
+  FCash := FCash - vComission;
+  FTotalComission := FTotalComission + vComission;
   Inc(FRebalanceCount);
 end;
 

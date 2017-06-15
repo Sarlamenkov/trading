@@ -31,6 +31,8 @@ type
     btnStop: TButton;
     btnSave: TButton;
     FileSaveDialog1: TFileSaveDialog;
+    Label5: TLabel;
+    seDiffAmount: TSpinEdit;
     procedure FormShow(Sender: TObject);
     procedure btnStartClick(Sender: TObject);
     procedure btnSearchClick(Sender: TObject);
@@ -111,6 +113,7 @@ begin
 
           FMarkovic.StartBalance := StrToIntDef(edBalance.Text, 200000);
           FMarkovic.RebalancePeriod := vRebalance;
+          FMarkovic.PortfolioDifferenceAmount := seDiffAmount.Value;
           FMarkovic.Calc(dtpStart.Date, dtpEnd.Date, vInstrList);
 
           lvBestResults.AddItem(
@@ -160,12 +163,14 @@ begin
   begin
     FMarkovic.StartBalance := StrToIntDef(edBalance.Text, 200000);
     FMarkovic.RebalancePeriod := THistoryType(cbxRebalance.Items.Objects[cbxRebalance.ItemIndex]);
+    FMarkovic.PortfolioDifferenceAmount := seDiffAmount.Value;
     FMarkovic.Calc(dtpStart.Date, dtpEnd.Date, vInstrList);
     lblResult.Caption := 'Баланс с применением алогитма: ' + IntToStr(FMarkovic.EndBalance) +
       ' (' + FormatFloat('0.000', FMarkovic.Percent) + '%), без него: ' +
       IntToStr(FMarkovic.EndBalanceWithoutAlgorithm) + ' (' + FormatFloat('0.000', FMarkovic.PercentWithoutAlgorithm) + '%)';
     lblRealPeriod.Caption := 'Реальный период тестирования с ' + DateToStr(FMarkovic.RealStart) +
-      ' по ' + DateToStr(FMarkovic.RealEnd);
+      ' по ' + DateToStr(FMarkovic.RealEnd) + ', комиссия: ' + FormatFloat('0.00 ', FMarkovic.TotalComission)
+      + ', ребалансов: ' + IntToStr(FMarkovic.RebalanceCount);
   end;
 
   vInstrList.Free;

@@ -45,7 +45,7 @@ object MainFm: TMainFm
     ParentFont = False
   end
   object Label4: TLabel
-    Left = 464
+    Left = 602
     Top = 88
     Width = 111
     Height = 16
@@ -61,11 +61,11 @@ object MainFm: TMainFm
   object lblRealPeriod: TLabel
     Left = 280
     Top = 201
-    Width = 5
-    Height = 19
+    Width = 4
+    Height = 16
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
-    Font.Height = -16
+    Font.Height = -13
     Font.Name = 'Tahoma'
     Font.Style = []
     ParentFont = False
@@ -88,6 +88,13 @@ object MainFm: TMainFm
     Width = 231
     Height = 16
     Caption = #1055#1086#1080#1089#1082' '#1083#1091#1095#1096#1080#1093' '#1089#1086#1095#1077#1090#1072#1085#1080#1081' '#1080#1085#1089#1090#1088#1091#1084#1077#1085#1090#1086#1074
+  end
+  object Label5: TLabel
+    Left = 440
+    Top = 88
+    Width = 141
+    Height = 16
+    Caption = #1056#1072#1079#1085#1080#1094#1072' '#1074' '#1087#1086#1088#1090#1092#1077#1083#1077', %'
   end
   object dtpStart: TDateTimePicker
     Left = 280
@@ -121,7 +128,7 @@ object MainFm: TMainFm
     TabOrder = 2
   end
   object btnStart: TButton
-    Left = 632
+    Left = 735
     Top = 110
     Width = 97
     Height = 25
@@ -138,7 +145,7 @@ object MainFm: TMainFm
     TabOrder = 4
   end
   object edBalance: TEdit
-    Left = 464
+    Left = 602
     Top = 110
     Width = 121
     Height = 24
@@ -210,6 +217,16 @@ object MainFm: TMainFm
     TabOrder = 11
     Visible = False
     OnClick = btnSaveClick
+  end
+  object seDiffAmount: TSpinEdit
+    Left = 440
+    Top = 110
+    Width = 57
+    Height = 26
+    MaxValue = 0
+    MinValue = 0
+    TabOrder = 12
+    Value = 0
   end
   object FileSaveDialog1: TFileSaveDialog
     FavoriteLinks = <>
