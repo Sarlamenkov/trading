@@ -107,11 +107,16 @@ type
     FRebalanceCount: Integer;
     FTotalComission: Double;
     FPortfolioDifferenceAmount: Double;
+    FPortfolioGrowAmount: Double;
+    FLastRebalanceDate: TDateTime;
+    FMaxQuiteGrowAmount: Double;
     procedure SetRebalancePeriod(const Value: THistoryType);
     procedure SetStartBalance(const Value: Integer);
     procedure Rebalance;
     function PortfolioValue(const ADate: TDateTime): Double;
     function PortfolioDifference(const ADate: TDateTime): Double;  // стоимость портфеля на дату
+    function PortfolioGrow(const ADate: TDateTime): Double;  // рост портфеля на дату по отношению к последней дате ребаланса
+    function MaxQuoteGrow(const ADate: TDateTime): Double;  // рост котировки на дату по отношению к последней дате ребаланса
   public
     procedure Calc(const AStartPeriod, AEndPeriod: TDateTime; const AInstrumList: TList);
 
@@ -120,6 +125,8 @@ type
     property EndBalanceWithoutAlgorithm: Integer read FEndBalanceWithoutAlgorithm;
     property RebalancePeriod: THistoryType read FRebalancePeriod write SetRebalancePeriod;
     property PortfolioDifferenceAmount: Double read FPortfolioDifferenceAmount write FPortfolioDifferenceAmount; // макс разница в портфеле в % для ребаланса
+    property PortfolioGrowAmount: Double read FPortfolioGrowAmount write FPortfolioGrowAmount; // макс рост портфеля в % для ребаланса
+    property MaxQuiteGrowAmount: Double read FMaxQuiteGrowAmount write FMaxQuiteGrowAmount; // макс рост котировки в % для ребаланса
     property RealStart: TDateTime read FRealStartPeriod;
     property RealEnd: TDateTime read FRealEndPeriod;
     property Percent: Double read FPercent;
@@ -166,10 +173,35 @@ begin
 
   while FCurTime < FRealEndPeriod do
   begin
-    if PortfolioDifferenceAmount > 0 then
+    if (PortfolioDifferenceAmount > 0) or (PortfolioGrowAmount > 0) or (MaxQuiteGrowAmount > 0) then
     begin
       FCurTime := FCurTime + THistory.Period(htDay);
-      if PortfolioDifference(FCurTime) > FPortfolioDifferenceAmount then
+      // стратегия 2)
+      if (PortfolioDifferenceAmount > 0) and (PortfolioGrowAmount > 0) then
+      begin
+        if (PortfolioDifference(FCurTime) > FPortfolioDifferenceAmount) and
+          (PortfolioGrow(FCurTime) > PortfolioGrowAmount)  then
+          Rebalance;
+      end
+      // стратегия 4)
+      else if (MaxQuiteGrowAmount > 0) and (PortfolioGrowAmount > 0) then
+      begin
+        if (MaxQuoteGrow(FCurTime) > MaxQuiteGrowAmount) and
+          (PortfolioGrow(FCurTime) > PortfolioGrowAmount)  then
+          Rebalance;
+      end
+      // стратегия 6)
+      else if (MaxQuiteGrowAmount > 0) and (PortfolioDifferenceAmount > 0) then
+      begin
+        if (MaxQuoteGrow(FCurTime) > MaxQuiteGrowAmount) and
+          (PortfolioDifference(FCurTime) > FPortfolioDifferenceAmount)  then
+          Rebalance;
+      end
+      // стратегии 1) 3) 7)
+      else if ((PortfolioDifferenceAmount > 0) and (PortfolioDifference(FCurTime) > FPortfolioDifferenceAmount)) or
+         ((PortfolioGrowAmount > 0) and (PortfolioGrow(FCurTime) > PortfolioGrowAmount)) or
+         ((MaxQuiteGrowAmount > 0) and (MaxQuoteGrow(FCurTime) > MaxQuiteGrowAmount))
+        then
         Rebalance;
     end
     else
@@ -195,19 +227,43 @@ begin
     Result := Result + FPortfolio[i] * TInstrument(FInstrumList[i]).GetRate(ADate, htDay).Close;
 end;
 
-function TMarkovic.PortfolioDifference(const ADate: TDateTime): Double;
+function TMarkovic.MaxQuoteGrow(const ADate: TDateTime): Double;
 var
   i: Integer;
-  vRate2: Double;
+  vRate1, vRate2, vV: Double;
 begin
   Result := 0;
-  vRate2 := (FPortfolio[1] * TInstrument(FInstrumList[1]).GetRate(ADate, htDay).Close);
-  if vRate2 = 0 then Exit;
+  for i := 0 to FInstrumList.Count - 1 do
+  begin
+    vRate2 := TInstrument(FInstrumList[i]).GetRate(ADate, htDay).Close;
+    if vRate2 = 0 then Continue;
+    vRate1 := TInstrument(FInstrumList[i]).GetRate(FLastRebalanceDate, htDay).Close;
+    vV := Abs(100 - vRate1 / vRate2 * 100);
+    if vV > Result then
+      Result := vV;
+  end;
+end;
 
-  Result := (FPortfolio[0] * TInstrument(FInstrumList[0]).GetRate(ADate, htDay).Close)/
-    vRate2*100;
-  if Result > 100 then
-    Result := 1/Result;
+function TMarkovic.PortfolioDifference(const ADate: TDateTime): Double;
+var
+  vPart1, vPart2: Double;
+begin
+  Result := 0;
+  vPart2 := (FPortfolio[1] * TInstrument(FInstrumList[1]).GetRate(ADate, htDay).Close);
+  if vPart2 = 0 then Exit;
+  vPart1 := (FPortfolio[0] * TInstrument(FInstrumList[0]).GetRate(ADate, htDay).Close);
+  Result := Abs(100 - vPart1 / vPart2 * 100);
+end;
+
+function TMarkovic.PortfolioGrow(const ADate: TDateTime): Double;
+var
+  vValue1, vValue2: Double;
+begin
+  Result := 0;
+  vValue2 := PortfolioValue(ADate);
+  if vValue2 = 0 then Exit;
+  vValue1 := PortfolioValue(FLastRebalanceDate);
+  Result := Abs(100 - vValue1 / vValue2 * 100);
 end;
 
 procedure TMarkovic.Rebalance;
@@ -233,6 +289,7 @@ begin
   FCash := FCash - vComission;
   FTotalComission := FTotalComission + vComission;
   Inc(FRebalanceCount);
+  FLastRebalanceDate := FCurTime;
 end;
 
 procedure TMarkovic.SetRebalancePeriod(const Value: THistoryType);

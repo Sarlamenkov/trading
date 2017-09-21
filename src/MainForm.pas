@@ -33,6 +33,10 @@ type
     FileSaveDialog1: TFileSaveDialog;
     Label5: TLabel;
     seDiffAmount: TSpinEdit;
+    Label6: TLabel;
+    sePortfolioGrow: TSpinEdit;
+    Label7: TLabel;
+    seQuoteGrow: TSpinEdit;
     procedure FormShow(Sender: TObject);
     procedure btnStartClick(Sender: TObject);
     procedure btnSearchClick(Sender: TObject);
@@ -114,6 +118,8 @@ begin
           FMarkovic.StartBalance := StrToIntDef(edBalance.Text, 200000);
           FMarkovic.RebalancePeriod := vRebalance;
           FMarkovic.PortfolioDifferenceAmount := seDiffAmount.Value;
+          FMarkovic.PortfolioGrowAmount := sePortfolioGrow.Value;
+          FMarkovic.MaxQuiteGrowAmount := seQuoteGrow.Value;
           FMarkovic.Calc(dtpStart.Date, dtpEnd.Date, vInstrList);
 
           lvBestResults.AddItem(
@@ -164,6 +170,8 @@ begin
     FMarkovic.StartBalance := StrToIntDef(edBalance.Text, 200000);
     FMarkovic.RebalancePeriod := THistoryType(cbxRebalance.Items.Objects[cbxRebalance.ItemIndex]);
     FMarkovic.PortfolioDifferenceAmount := seDiffAmount.Value;
+    FMarkovic.PortfolioGrowAmount := sePortfolioGrow.Value;
+    FMarkovic.MaxQuiteGrowAmount := seQuoteGrow.Value;
     FMarkovic.Calc(dtpStart.Date, dtpEnd.Date, vInstrList);
     lblResult.Caption := 'Баланс с применением алогитма: ' + IntToStr(FMarkovic.EndBalance) +
       ' (' + FormatFloat('0.000', FMarkovic.Percent) + '%), без него: ' +

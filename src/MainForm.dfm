@@ -26,8 +26,8 @@ object MainFm: TMainFm
     Caption = #1055#1077#1088#1080#1086#1076' '#1090#1077#1089#1090#1080#1088#1086#1074#1072#1085#1080#1103
   end
   object Label2: TLabel
-    Left = 280
-    Top = 88
+    Left = 721
+    Top = 18
     Width = 109
     Height = 16
     Caption = #1055#1077#1088#1080#1086#1076' '#1088#1077#1073#1072#1083#1072#1085#1089#1072
@@ -45,8 +45,8 @@ object MainFm: TMainFm
     ParentFont = False
   end
   object Label4: TLabel
-    Left = 602
-    Top = 88
+    Left = 575
+    Top = 18
     Width = 111
     Height = 16
     Caption = #1053#1072#1095#1072#1083#1100#1085#1099#1081' '#1073#1072#1083#1072#1085#1089
@@ -90,25 +90,39 @@ object MainFm: TMainFm
     Caption = #1055#1086#1080#1089#1082' '#1083#1091#1095#1096#1080#1093' '#1089#1086#1095#1077#1090#1072#1085#1080#1081' '#1080#1085#1089#1090#1088#1091#1084#1077#1085#1090#1086#1074
   end
   object Label5: TLabel
-    Left = 440
-    Top = 88
+    Left = 281
+    Top = 80
     Width = 141
     Height = 16
     Caption = #1056#1072#1079#1085#1080#1094#1072' '#1074' '#1087#1086#1088#1090#1092#1077#1083#1077', %'
   end
+  object Label6: TLabel
+    Left = 428
+    Top = 80
+    Width = 108
+    Height = 16
+    Caption = #1056#1086#1089#1090' '#1087#1086#1088#1090#1092#1077#1083#1103', %'
+  end
+  object Label7: TLabel
+    Left = 552
+    Top = 80
+    Width = 110
+    Height = 16
+    Caption = #1056#1086#1089#1090' '#1082#1086#1090#1080#1088#1086#1074#1082#1080', %'
+  end
   object dtpStart: TDateTimePicker
     Left = 280
     Top = 40
-    Width = 186
+    Width = 109
     Height = 24
     Date = 42894.723395069440000000
     Time = 42894.723395069440000000
     TabOrder = 0
   end
   object dtpEnd: TDateTimePicker
-    Left = 496
+    Left = 416
     Top = 40
-    Width = 186
+    Width = 129
     Height = 24
     Date = 42894.723569375000000000
     Time = 42894.723569375000000000
@@ -128,25 +142,25 @@ object MainFm: TMainFm
     TabOrder = 2
   end
   object btnStart: TButton
-    Left = 735
-    Top = 110
-    Width = 97
+    Left = 768
+    Top = 102
+    Width = 123
     Height = 25
     Caption = #1055#1086#1089#1095#1080#1090#1072#1090#1100
     TabOrder = 3
     OnClick = btnStartClick
   end
   object cbxRebalance: TComboBox
-    Left = 280
-    Top = 110
+    Left = 720
+    Top = 40
     Width = 145
     Height = 24
     Style = csDropDownList
     TabOrder = 4
   end
   object edBalance: TEdit
-    Left = 602
-    Top = 110
+    Left = 575
+    Top = 40
     Width = 121
     Height = 24
     TabOrder = 5
@@ -219,13 +233,33 @@ object MainFm: TMainFm
     OnClick = btnSaveClick
   end
   object seDiffAmount: TSpinEdit
-    Left = 440
-    Top = 110
+    Left = 281
+    Top = 102
     Width = 57
     Height = 26
-    MaxValue = 0
+    MaxValue = 99999
     MinValue = 0
     TabOrder = 12
+    Value = 0
+  end
+  object sePortfolioGrow: TSpinEdit
+    Left = 428
+    Top = 102
+    Width = 57
+    Height = 26
+    MaxValue = 99999
+    MinValue = 0
+    TabOrder = 13
+    Value = 0
+  end
+  object seQuoteGrow: TSpinEdit
+    Left = 552
+    Top = 102
+    Width = 57
+    Height = 26
+    MaxValue = 99999
+    MinValue = 0
+    TabOrder = 14
     Value = 0
   end
   object FileSaveDialog1: TFileSaveDialog
