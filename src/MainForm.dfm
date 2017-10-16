@@ -166,23 +166,6 @@ object MainFm: TMainFm
     TabOrder = 5
     Text = '200000'
   end
-  object lvBestResults: TListView
-    Left = 280
-    Top = 288
-    Width = 620
-    Height = 251
-    Anchors = [akLeft, akTop, akRight, akBottom]
-    Columns = <
-      item
-        Width = 500
-      end>
-    ReadOnly = True
-    RowSelect = True
-    SortType = stData
-    TabOrder = 6
-    ViewStyle = vsReport
-    OnCompare = lvBestResultsCompare
-  end
   object SpinEdit1: TSpinEdit
     Left = 561
     Top = 245
@@ -190,7 +173,7 @@ object MainFm: TMainFm
     Height = 26
     MaxValue = 10
     MinValue = 2
-    TabOrder = 7
+    TabOrder = 6
     Value = 2
   end
   object btnSearch: TButton
@@ -199,7 +182,7 @@ object MainFm: TMainFm
     Width = 97
     Height = 25
     Caption = #1048#1089#1082#1072#1090#1100
-    TabOrder = 8
+    TabOrder = 7
     OnClick = btnSearchClick
   end
   object ProgressBar1: TProgressBar
@@ -209,7 +192,7 @@ object MainFm: TMainFm
     Height = 10
     Anchors = [akLeft, akTop, akRight]
     Step = 1
-    TabOrder = 9
+    TabOrder = 8
     Visible = False
   end
   object btnStop: TButton
@@ -218,7 +201,7 @@ object MainFm: TMainFm
     Width = 75
     Height = 25
     Caption = #1057#1090#1086#1087
-    TabOrder = 10
+    TabOrder = 9
     Visible = False
     OnClick = btnStopClick
   end
@@ -228,7 +211,7 @@ object MainFm: TMainFm
     Width = 75
     Height = 25
     Caption = #1057#1086#1093#1088#1072#1085#1080#1090#1100
-    TabOrder = 11
+    TabOrder = 10
     Visible = False
     OnClick = btnSaveClick
   end
@@ -239,7 +222,7 @@ object MainFm: TMainFm
     Height = 26
     MaxValue = 99999
     MinValue = 0
-    TabOrder = 12
+    TabOrder = 11
     Value = 0
   end
   object sePortfolioGrow: TSpinEdit
@@ -249,7 +232,7 @@ object MainFm: TMainFm
     Height = 26
     MaxValue = 99999
     MinValue = 0
-    TabOrder = 13
+    TabOrder = 12
     Value = 0
   end
   object seQuoteGrow: TSpinEdit
@@ -259,8 +242,18 @@ object MainFm: TMainFm
     Height = 26
     MaxValue = 99999
     MinValue = 0
-    TabOrder = 14
+    TabOrder = 13
     Value = 0
+  end
+  object lvBestResults: TMemo
+    Left = 281
+    Top = 290
+    Width = 619
+    Height = 249
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    ReadOnly = True
+    ScrollBars = ssVertical
+    TabOrder = 14
   end
   object FileSaveDialog1: TFileSaveDialog
     FavoriteLinks = <>

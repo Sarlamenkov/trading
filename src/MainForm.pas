@@ -22,7 +22,6 @@ type
     Label4: TLabel;
     lblInstrums: TLabel;
     lblRealPeriod: TLabel;
-    lvBestResults: TListView;
     lblInstrumNames: TLabel;
     Label3: TLabel;
     SpinEdit1: TSpinEdit;
@@ -37,17 +36,17 @@ type
     sePortfolioGrow: TSpinEdit;
     Label7: TLabel;
     seQuoteGrow: TSpinEdit;
+    lvBestResults: TMemo;
     procedure FormShow(Sender: TObject);
     procedure btnStartClick(Sender: TObject);
     procedure btnSearchClick(Sender: TObject);
-    procedure lvBestResultsCompare(Sender: TObject; Item1, Item2: TListItem;
-      Data: Integer; var Compare: Integer);
     procedure btnStopClick(Sender: TObject);
     procedure btnSaveClick(Sender: TObject);
   private
     FInstrums: TInstruments;
     FMarkovic: TMarkovic;
     FInProcess: Boolean;
+    FResults: TStringList;
     procedure FillInstrums;
     procedure UpdateUIState;
   public
@@ -65,19 +64,17 @@ uses
 {$R *.dfm}
 
 procedure TMainFm.btnSaveClick(Sender: TObject);
-var
-  vStrList: TStringList;
-  i: Integer;
 begin
   if FileSaveDialog1.Execute then
   begin
-    vStrList := TStringList.Create;
-    vStrList.Append('%'#9'Instrum'#9'Intv'#9'%w alg'#9'%w/o alg'#9'Rebal'#9'Start'#9'End'#9'Days');
-    for i := 0 to lvBestResults.Items.Count - 1 do
-      vStrList.Append(lvBestResults.Items[i].Caption);
-    vStrList.SaveToFile(FileSaveDialog1.FileName);
-    vStrList.Free;
+    FResults.SaveToFile(FileSaveDialog1.FileName);
+
   end;
+end;
+
+function MySort(List: TStringList; Index1, Index2: Integer): Integer;
+begin
+  Result := Integer(List.Objects[Index2]) - Integer(List.Objects[Index1]);
 end;
 
 procedure TMainFm.btnSearchClick(Sender: TObject);
@@ -91,13 +88,17 @@ begin
   if FInProcess then Exit;
 
   FInProcess := True;
-  lvBestResults.Clear;
-  lvBestResults.Items.BeginUpdate;
+ // lvBestResults.Clear;
+
   vInstrList := TList.Create;
   vPrevCursor := Screen.Cursor;
   Screen.Cursor := crHourGlass;
   ProgressBar1.Position := 0;
   UpdateUIState;
+
+  FResults.BeginUpdate;
+  FResults.Clear;
+
   Application.ProcessMessages;
   try
     for i := 0 to FInstrums.Count - SpinEdit1.Value do
@@ -122,14 +123,16 @@ begin
           FMarkovic.MaxQuiteGrowAmount := seQuoteGrow.Value;
           FMarkovic.Calc(dtpStart.Date, dtpEnd.Date, vInstrList);
 
-          lvBestResults.AddItem(
+          FResults.AddObject(
             FormatFloat('0.00', FMarkovic.Percent - FMarkovic.PercentWithoutAlgorithm) + #9 +
             vInstrNames + #9 + THistory.ToText(vRebalance) + #9 +
             FormatFloat('0.00', FMarkovic.Percent) + #9 +
             FormatFloat('0.00', FMarkovic.PercentWithoutAlgorithm) + #9 +
             IntToStr(FMarkovic.RebalanceCount) + #9 +
             DateToStr(FMarkovic.RealStart) + #9 + DateToStr(FMarkovic.RealEnd) + #9 +
-            IntToStr(Trunc(FMarkovic.RealEnd - FMarkovic.RealStart)),
+            IntToStr(Trunc(FMarkovic.RealEnd - FMarkovic.RealStart)) + #9 +
+            FormatFloat('0.00', FInstrums[i].History[htDay].GetRate(dtpStart.Date).Close) + '/' +
+            FormatFloat('0.00', FInstrums[i].History[htDay].GetRate(dtpEnd.Date).Close),
             TObject(Trunc((FMarkovic.Percent - FMarkovic.PercentWithoutAlgorithm) * 100000)) );
         end;
       end;
@@ -139,14 +142,16 @@ begin
       else
         Exit;
     end;
+    FResults.CustomSort(MySort);
+    FResults.Insert(0, '%'#9'Instrum'#9'Intv'#9'%w alg'#9'%w/o alg'#9'Rebal'#9'Start'#9'End'#9'Days'#9'Start/End Quote');
+    lvBestResults.Lines.Assign(FResults);
   finally
     vInstrList.Free;
-    lvBestResults.Items.EndUpdate;
+    FResults.EndUpdate;
     Screen.Cursor := vPrevCursor;
     FInProcess := False;
     UpdateUIState;
   end;
-  lvBestResults.AlphaSort;
 end;
 
 procedure TMainFm.btnStartClick(Sender: TObject);
@@ -173,7 +178,7 @@ begin
     FMarkovic.PortfolioGrowAmount := sePortfolioGrow.Value;
     FMarkovic.MaxQuiteGrowAmount := seQuoteGrow.Value;
     FMarkovic.Calc(dtpStart.Date, dtpEnd.Date, vInstrList);
-    lblResult.Caption := 'Баланс с применением алогитма: ' + IntToStr(FMarkovic.EndBalance) +
+    lblResult.Caption := 'Баланс с применением алгоритма: ' + IntToStr(FMarkovic.EndBalance) +
       ' (' + FormatFloat('0.000', FMarkovic.Percent) + '%), без него: ' +
       IntToStr(FMarkovic.EndBalanceWithoutAlgorithm) + ' (' + FormatFloat('0.000', FMarkovic.PercentWithoutAlgorithm) + '%)';
     lblRealPeriod.Caption := 'Реальный период тестирования с ' + DateToStr(FMarkovic.RealStart) +
@@ -231,18 +236,14 @@ var
 begin
   FInstrums := TInstruments.Create;
   FMarkovic := TMarkovic.Create;
+  FResults := TStringList.Create;
+  FResults.Sorted := False;
   FInstrums.LoadFromFolder(ExtractFilePath(Application.ExeName) + 'data');
   FillInstrums;
   cbxRebalance.Clear;
   for i := Low(THistoryType) to High(THistoryType) do
     cbxRebalance.Items.AddObject(THistory.ToText(i), TObject(i));
   cbxRebalance.ItemIndex := 0;
-end;
-
-procedure TMainFm.lvBestResultsCompare(Sender: TObject; Item1, Item2: TListItem;
-  Data: Integer; var Compare: Integer);
-begin
-  Compare := Integer(Item2.Data) - Integer(Item1.Data);
 end;
 
 procedure TMainFm.UpdateUIState;
